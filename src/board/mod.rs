@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // SPDX-FileCopyrightText: Duszku
 
+mod result;
+
 use crate::bitboard::Bitboard;
 use crate::loc::Loc;
+use self::result::{Result, BoardError};
 
 /// All the different types of chess pieces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,13 +84,21 @@ impl std::ops::Index<bool> for Board {
     type Output = Bitboard;
 
     fn index(&self, index: bool) -> &Self::Output {
-        if index { &self.white } else { &self.black }
+        if index {
+            &self.white
+        } else {
+            &self.black
+        }
     }
 }
 
 impl std::ops::IndexMut<bool> for Board {
     fn index_mut(&mut self, index: bool) -> &mut Self::Output {
-        if index { &mut self.white } else { &mut self.black }
+        if index {
+            &mut self.white
+        } else {
+            &mut self.black
+        }
     }
 }
 
@@ -112,9 +123,9 @@ impl BoardBuilder {
     ///     .add_piece(&black_pawn, &e5)
     ///     .build();
     ///
-    /// assert_eq!(board.at(&a1).unwrap(), white_rook);
-    /// assert_eq!(board.at(&e5).unwrap(), black_pawn);
-    /// assert!(board.at(&f2).is_none());
+    /// assert_eq!(board.at(&a1).unwrap(), Some(white_rook));
+    /// assert_eq!(board.at(&e5).unwrap(), Some(black_pawn));
+    /// assert!(board.at(&f2).unwrap().is_none());
     /// ```
     pub fn add_piece(mut self, piece: &Piece, loc: &Loc) -> Self {
         let new = Bitboard::from_single(loc);
@@ -141,20 +152,14 @@ impl Board {
     }
 
     /// Returns piece (if any) located at a given square.
-    ///
-    /// # Panics
-    ///
-    /// FIXME: If a board is corrupted (two colour occupying the same square or
-    /// a square with a color but no piece) this function panics. Ideally it
-    /// should return an error instead.
-    pub fn at(&self, loc: &Loc) -> Option<Piece> {
+    pub fn at(&self, loc: &Loc) -> Result<Option<Piece>> {
         use PieceKind::*;
 
         let white = match (self.white.at(loc), self.black.at(loc)) {
-            (false, false) => return None,
+            (false, false) => return Ok(None),
             (false, true) => false,
             (true, false) => true,
-            (true, true) => panic!("Board corruption: two colors"),
+            (true, true) => return Err(BoardError::board_corruption("two colors")),
         };
 
         let kind = [
@@ -166,10 +171,12 @@ impl Board {
             (&self.kings, King),
         ]
         .into_iter()
-        .find_map(|(bitboard, kind)| bitboard.at(loc).then_some(kind))
-        .expect("Board corruption: color with no piece");
+        .find_map(|(bitboard, kind)| bitboard.at(loc).then_some(kind));
 
-        Some(Piece { kind, white })
+        match kind {
+            Some(kind) => Ok(Some(Piece { kind, white })),
+            None => Err(BoardError::board_corruption("color with no piece"))
+        }
     }
 
     pub fn pieces(&self, pattern: &Piece) -> Bitboard {

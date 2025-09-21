@@ -5,7 +5,7 @@ use crate::bitboard::Bitboard;
 use crate::loc::Loc;
 
 /// All the different types of chess pieces.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -45,6 +45,52 @@ pub struct BoardBuilder {
     board: Board,
 }
 
+impl std::ops::Index<PieceKind> for Board {
+    type Output = Bitboard;
+
+    fn index(&self, index: PieceKind) -> &Self::Output {
+        use PieceKind::*;
+
+        match index {
+            Pawn => &self.pawns,
+            Knight => &self.knights,
+            Bishop => &self.bishops,
+            Rook => &self.rooks,
+            Queen => &self.queens,
+            King => &self.kings,
+        }
+    }
+}
+
+impl std::ops::IndexMut<PieceKind> for Board {
+    fn index_mut(&mut self, index: PieceKind) -> &mut Self::Output {
+        use PieceKind::*;
+
+        match index {
+            Pawn => &mut self.pawns,
+            Knight => &mut self.knights,
+            Bishop => &mut self.bishops,
+            Rook => &mut self.rooks,
+            Queen => &mut self.queens,
+            King => &mut self.kings,
+        }
+    }
+}
+
+impl std::ops::Index<bool> for Board {
+    type Output = Bitboard;
+
+    fn index(&self, index: bool) -> &Self::Output {
+        if index { &self.white } else { &self.black }
+    }
+}
+
+impl std::ops::IndexMut<bool> for Board {
+    fn index_mut(&mut self, index: bool) -> &mut Self::Output {
+        if index { &mut self.white } else { &mut self.black }
+    }
+}
+
 impl BoardBuilder {
     /// Places a piece on a board.
     ///
@@ -71,24 +117,10 @@ impl BoardBuilder {
     /// assert!(board.at(&f2).is_none());
     /// ```
     pub fn add_piece(mut self, piece: &Piece, loc: &Loc) -> Self {
-        use PieceKind::*;
-
         let new = Bitboard::from_single(loc);
 
-        match piece.kind {
-            Pawn => self.board.pawns |= new,
-            Knight => self.board.knights |= new,
-            Bishop => self.board.bishops |= new,
-            Rook => self.board.rooks |= new,
-            Queen => self.board.queens |= new,
-            King => self.board.kings |= new,
-        };
-
-        if piece.white {
-            self.board.white |= new;
-        } else {
-            self.board.black |= new;
-        }
+        self.board[piece.kind] |= new;
+        self.board[piece.white] |= new;
 
         self
     }
@@ -140,33 +172,7 @@ impl Board {
         Some(Piece { kind, white })
     }
 
-    /// Yields a `Bitboard` of all pawns of a given colour.
-    pub fn pawns(&self, white: bool) -> Bitboard {
-        self.pawns & (if white { self.white } else { self.black })
-    }
-
-    /// Yields a `Bitboard` of all knights of a given colour.
-    pub fn knights(&self, white: bool) -> Bitboard {
-        self.knights & (if white { self.white } else { self.black })
-    }
-
-    /// Yields a `Bitboard` of all bishops of a given colour.
-    pub fn bishops(&self, white: bool) -> Bitboard {
-        self.bishops & (if white { self.white } else { self.black })
-    }
-
-    /// Yields a `Bitboard` of all rooks of a given colour.
-    pub fn rooks(&self, white: bool) -> Bitboard {
-        self.rooks & (if white { self.white } else { self.black })
-    }
-
-    /// Yields a `Bitboard` of all queens of a given colour.
-    pub fn queens(&self, white: bool) -> Bitboard {
-        self.queens & (if white { self.white } else { self.black })
-    }
-
-    /// Yields a `Bitboard` of all kings of a given colour.
-    pub fn kings(&self, white: bool) -> Bitboard {
-        self.kings & (if white { self.white } else { self.black })
+    pub fn pieces(&self, pattern: &Piece) -> Bitboard {
+        self[pattern.kind] & self[pattern.white]
     }
 }

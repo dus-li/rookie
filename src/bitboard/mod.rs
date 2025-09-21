@@ -67,6 +67,22 @@ impl std::ops::BitOrAssign for Bitboard {
     }
 }
 
+/// Implements the bitwise-XOR operator for `Bitboard`.
+impl std::ops::BitXor for Bitboard {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Bitboard(self.0 ^ rhs.0)
+    }
+}
+
+/// Implements the bitwise-XOR assignment operator for `Bitboard`.
+impl std::ops::BitXorAssign for Bitboard {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
 impl Bitboard {
     /// Creates a new bitboard.
     ///
@@ -84,10 +100,10 @@ impl Bitboard {
     ///
     /// let bitboard = Bitboard::new(&indices);
     ///
-    /// assert!(bitboard.at(&Loc::from_index(0).unwrap()));
-    /// assert!(bitboard.at(&Loc::from_index(5).unwrap()));
-    /// assert!(bitboard.at(&Loc::from_index(13).unwrap()));
-    /// assert!(bitboard.at(&Loc::from_index(22).unwrap()));
+    /// assert!(bitboard.at(Loc::from_index(0).unwrap()));
+    /// assert!(bitboard.at(Loc::from_index(5).unwrap()));
+    /// assert!(bitboard.at(Loc::from_index(13).unwrap()));
+    /// assert!(bitboard.at(Loc::from_index(22).unwrap()));
     /// ```
     ///
     /// # Arguments
@@ -105,7 +121,7 @@ impl Bitboard {
     }
 
     /// Initializes a bitboard containing a single piece.
-    pub fn from_single(loc: &Loc) -> Self {
+    pub fn from_single(loc: Loc) -> Self {
         Self(1 << loc.index())
     }
 
@@ -125,12 +141,12 @@ impl Bitboard {
     /// let board = Bitboard::from_u64(0b0000_1001);
     ///
     /// // These are set
-    /// assert!(board.at(&Loc::from_index(0).unwrap()));
-    /// assert!(board.at(&Loc::from_index(3).unwrap()));
+    /// assert!(board.at(Loc::from_index(0).unwrap()));
+    /// assert!(board.at(Loc::from_index(3).unwrap()));
     ///
     /// // These are some of the squares that are not set
-    /// assert!(!board.at(&Loc::from_index(1).unwrap()));
-    /// assert!(!board.at(&Loc::from_index(2).unwrap()));
+    /// assert!(!board.at(Loc::from_index(1).unwrap()));
+    /// assert!(!board.at(Loc::from_index(2).unwrap()));
     /// ```
     ///
     /// # Arguments
@@ -142,7 +158,7 @@ impl Bitboard {
     /// State of the polled square.
     /// * `true`: when the square contains a piece.
     /// * `false`: when the square does not contain a piece.
-    pub fn at(&self, loc: &Loc) -> bool {
+    pub fn at(&self, loc: Loc) -> bool {
         (self.0 & (1 << loc.index())) != 0
     }
 

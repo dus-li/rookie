@@ -7,7 +7,7 @@
 /// * `A1` maps to `0`
 /// * `B1` maps to `1`
 /// * `A2` maps to `8`
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Loc(u8);
 
 const BOARD_DIM: u8 = 8;

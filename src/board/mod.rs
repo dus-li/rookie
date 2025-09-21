@@ -3,9 +3,9 @@
 
 mod result;
 
+use self::result::{BoardError, Result};
 use crate::bitboard::Bitboard;
 use crate::loc::Loc;
-use self::result::{Result, BoardError};
 
 /// All the different types of chess pieces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +19,7 @@ pub enum PieceKind {
 }
 
 /// A complete description of a chess piece.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Piece {
     pub kind: PieceKind,
     pub white: bool,
@@ -119,15 +119,15 @@ impl BoardBuilder {
     /// let black_pawn = Piece { kind: PieceKind::Pawn, white: false };
     ///
     /// let board = Board::builder()
-    ///     .add_piece(&white_rook, &a1)
-    ///     .add_piece(&black_pawn, &e5)
+    ///     .add_piece(white_rook, a1)
+    ///     .add_piece(black_pawn, e5)
     ///     .build();
     ///
-    /// assert_eq!(board.at(&a1).unwrap(), Some(white_rook));
-    /// assert_eq!(board.at(&e5).unwrap(), Some(black_pawn));
-    /// assert!(board.at(&f2).unwrap().is_none());
+    /// assert_eq!(board.at(a1).unwrap(), Some(white_rook));
+    /// assert_eq!(board.at(e5).unwrap(), Some(black_pawn));
+    /// assert!(board.at(f2).unwrap().is_none());
     /// ```
-    pub fn add_piece(mut self, piece: &Piece, loc: &Loc) -> Self {
+    pub fn add_piece(mut self, piece: Piece, loc: Loc) -> Self {
         let new = Bitboard::from_single(loc);
 
         self.board[piece.kind] |= new;
@@ -152,7 +152,7 @@ impl Board {
     }
 
     /// Returns piece (if any) located at a given square.
-    pub fn at(&self, loc: &Loc) -> Result<Option<Piece>> {
+    pub fn at(&self, loc: Loc) -> Result<Option<Piece>> {
         use PieceKind::*;
 
         let white = match (self.white.at(loc), self.black.at(loc)) {
@@ -175,11 +175,70 @@ impl Board {
 
         match kind {
             Some(kind) => Ok(Some(Piece { kind, white })),
-            None => Err(BoardError::board_corruption("color with no piece"))
+            None => Err(BoardError::board_corruption("color with no piece")),
         }
     }
 
-    pub fn pieces(&self, pattern: &Piece) -> Bitboard {
+    pub fn pieces(&self, pattern: Piece) -> Bitboard {
         self[pattern.kind] & self[pattern.white]
+    }
+
+    /// Remove a piece from the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rookie::board::{Board, Piece, PieceKind};
+    /// use rookie::loc::Loc;
+    ///
+    /// let a1 = Loc::new(0, 0).unwrap();
+    /// let e5 = Loc::new(4, 4).unwrap();
+    /// let white_rook = Piece { kind: PieceKind::Rook, white: true };
+    /// let black_pawn = Piece { kind: PieceKind::Pawn, white: false };
+    ///
+    /// let mut board = Board::builder()
+    ///     .add_piece(white_rook, a1)
+    ///     .add_piece(black_pawn, e5)
+    ///     .build();
+    ///
+    /// board.remove(white_rook, a1);
+    /// board.remove(black_pawn, e5);
+    ///
+    /// assert!(board.at(a1).unwrap().is_none());
+    /// assert!(board.at(e5).unwrap().is_none());
+    /// ```
+    pub fn remove(&mut self, what: Piece, from: Loc) {
+        let from = Bitboard::from_single(from);
+
+        self[what.kind] ^= from;
+        self[what.white] ^= from;
+    }
+
+    /// Change position of a piece on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rookie::board::{Board, Piece, PieceKind};
+    /// use rookie::loc::Loc;
+    ///
+    /// let a1 = Loc::new(0, 0).unwrap();
+    /// let a6 = Loc::new(5, 0).unwrap();
+    /// let white_rook = Piece { kind: PieceKind::Rook, white: true };
+    ///
+    /// let mut board = Board::builder()
+    ///     .add_piece(white_rook, a1)
+    ///     .build();
+    ///
+    /// board.chpos(white_rook, a1, a6);
+    ///
+    /// assert!(board.at(a1).unwrap().is_none());
+    /// assert_eq!(board.at(a6).unwrap().unwrap(), white_rook);
+    /// ```
+    pub fn chpos(&mut self, what: Piece, from: Loc, to: Loc) {
+        let mat = Bitboard::new(&[from, to]);
+
+        self[what.kind] ^= mat;
+        self[what.white] ^= mat;
     }
 }
